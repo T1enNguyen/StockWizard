@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>@ViewBag.Title AdminLTE 3 | Dashboard 3</title>
+    <link href="~/Content/Site.css" rel="stylesheet" type="text/css" />
+    <link href="~/Content/bootstrap.min.css" rel="stylesheet" type="text/css" />
+    <script src="~/Scripts/modernizr-2.6.2.js"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="~/Content/all.min.css">
+    <!-- IonIcons -->
+    <link rel="stylesheet" href="http://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="~/Content/adminlte.min.css">
+    <!-- Google Font: Source Sans Pro -->
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+
+    <!-- jQuery -->
+    <script src="~/Content/plugins/jquery/jquery.min.js"></script>
+    <!-- Bootstrap 4 -->
+    <script src="~/Content/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <!-- ChartJS -->
+    <script src="~/Content/plugins/chart.js/Chart.min.js"></script>
+    <!-- AdminLTE App -->
+    <script src="~/Content/dist/js/adminlte.min.js"></script>
+    <!-- AdminLTE for demo purposes -->
+    <script src="~/Content/dist/js/demo.js"></script>
+    <!-- page script -->
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.1/css/bootstrap.min.css">
+
+    <!-- Import jQuery và CanvasJS -->
+    <script type="text/javascript" src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="https://cdn.canvasjs.com/canvasjs.stock.min.js"></script>
+    <script type="text/javascript">
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const content = e.target.result;
+                parseCSV(content);
+                displayCSVTable(content);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(content) {
+            const lines = content.split("\n").map(line => line.trim());
+            if (lines.length < 2) {
+                alert("Tệp CSV không có đủ dữ liệu!");
+                return;
+            }
+
+            const headers = lines[0].split(/\s+|,|;/).map(h => h.toLowerCase());
+            const dateIndex = headers.indexOf("date");
+            const openIndex = headers.indexOf("open");
+            const highIndex = headers.indexOf("high");
+            const lowIndex = headers.indexOf("low");
+            const closeIndex = headers.indexOf("close");
+
+            if (dateIndex === -1 || openIndex === -1 || highIndex === -1 || lowIndex === -1 || closeIndex === -1) {
+                alert("Tệp CSV cần có các cột: Date, Open, High, Low, Close.");
+                return;
+            }
+
+            const dps1 = [];
+            const dps2 = [];
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(/\s+|,|;/);
+                if (parts.length !== headers.length) continue;
+
+                const date = new Date(parts[dateIndex]);
+                const open = parseFloat(parts[openIndex]);
+                const high = parseFloat(parts[highIndex]);
+                const low = parseFloat(parts[lowIndex]);
+                const close = parseFloat(parts[closeIndex]);
+
+                if (!isNaN(date.getTime()) && !isNaN(open) && !isNaN(high) && !isNaN(low) && !isNaN(close)) {
+                    dps1.push({ x: date, y: [open, high, low, close] });
+                    dps2.push({ x: date, y: close });
+                }
+            }
+
+            if (dps1.length === 0) {
+                alert("Không có dữ liệu hợp lệ để hiển thị.");
+                return;
+            }
+
+            renderCharts(dps1, dps2);
+        }
+
+        function renderCharts(dps1, dps2) {
+            var lineChart = new CanvasJS.StockChart("chartContainer1", {
+                theme: "light2",
+                exportEnabled: true,
+                charts: [{
+                    axisX: { crosshair: { enabled: true, snapToDataPoint: true } },
+                    axisY: { prefix: "$" },
+                    data: [{
+                        type: "line",
+                        yValueFormatString: "$#,###.##",
+                        dataPoints: dps2
+                    }]
+                }],
+                navigator: {
+                    data: [{ dataPoints: dps2 }],
+                    slider: {
+                        minimum: dps1[0]?.x || new Date(),
+                        maximum: dps1[dps1.length - 1]?.x || new Date()
+                    }
+                }
+            });
+            lineChart.render();
+
+            var candlestickChart = new CanvasJS.StockChart("chartContainer2", {
+                theme: "light2",
+                exportEnabled: true,
+                charts: [{
+                    axisX: { crosshair: { enabled: true, snapToDataPoint: true } },
+                    axisY: { prefix: "$" },
+                    data: [{
+                        type: "candlestick",
+                        yValueFormatString: "$#,###.##",
+                        dataPoints: dps1
+                    }]
+                }],
+                navigator: {
+                    data: [{ dataPoints: dps2 }],
+                    slider: {
+                        minimum: dps1[0]?.x || new Date(),
+                        maximum: dps1[dps1.length - 1]?.x || new Date()
+                    }
+                }
+            });
+            candlestickChart.render();
+        }
+
+        function displayCSVTable(content) {
+            const lines = content.split("\n").map(line => line.trim());
+            if (lines.length < 2) return;
+
+            const headers = lines[0].split(/\s+|,|;/);
+            let tableHTML = "<table class='table table-bordered table-striped'><thead><tr>";
+
+            // Thêm header vào bảng
+            headers.forEach(header => {
+                tableHTML += `<th>${header}</th>`;
+            });
+            tableHTML += "</tr></thead><tbody>";
+
+            // Thêm dữ liệu vào bảng
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(/\s+|,|;/);
+                if (parts.length !== headers.length) continue;
+                tableHTML += "<tr>";
+                parts.forEach(part => {
+                    tableHTML += `<td>${part}</td>`;
+                });
+                tableHTML += "</tr>";
+            }
+            tableHTML += "</tbody></table>";
+
+            document.getElementById("csvTableContainer").innerHTML = tableHTML;
+        }
+    </script>
+</head>
+<body class="hold-transition sidebar">
+    <header id="header">
+        <div class="header_top sidebar-dark-primary" >
+            <!--header_top-->
+            <div class="container" style=" height: 60px">
+                <div class="row">
+                    <div class="col-sm-12">
+                         <h2 class= "font-weight-light" style="color: white; line-height: 1.5 ">THIẾT KẾ VÀ XÂY DỰNG ỨNG DỤNG DỰ ĐOÁN GIÁ CỔ PHIẾU CHỨNG KHOÁN</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    @RenderBody()
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
